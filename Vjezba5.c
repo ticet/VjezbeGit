@@ -24,60 +24,69 @@ typedef struct _Cvor _CVOR;
 typedef struct _Cvor* Position;
 struct _Cvor
 {
-	int koeficijent;
+	float Element;
 	Position Next;
 };
 
-int PrintMenu();
+
 int CreateNew(Position *);
-int ReadFromFile(Position);
-int PrintList(Position);
-int Presijek(Position, Position, Position);
-int Unija(Position, Position, Position);
+int PrintMenu();
+int Push(Position, float);
+int Pop(Position, float*);
+int Calculator(float, float, char *, float *);
+int IsOperand(char*, float *);
+int IsValidStack(Position);
+int CalculatePosfix(char *, Position);
+int GarbageCollector(Position);
 
 int main(int argc, char *argv[])
 {
-	int err = SUCCESS;
-	struct _Cvor L1, L2, P, U;
+	int error = SUCCESS;
+	char *fileName = NULL;
+	_CVOR _Stack;
+	_Stack.Next = NULL;
 
-	L1.Next = NULL;
-	L2.Next = NULL;
-	P.Next = NULL;
-	U.Next = NULL;
+	PrintMenu();
 
-	err = PrintMenu();
-	if (err) return err;
+	fileName = (char*)malloc(sizeof(char) * BUFFER_LENGTH);
+	if (fileName == NULL) return ERROR;
+	memset(fileName, '\0', BUFFER_LENGTH);
 
-	printf("\r\n\t********************************************");
-	printf("\r\n\tLista 1.");
-	err = ReadFromFile(&L1);
-	if (err)return err;
-	printf("\r\n\t\tL1 : ");
-	PrintList(L1.Next);
+	while (strlen(fileName) == 0)
+	{
+		printf("\r\n\tUnesite naziv datoteke s posfix izrazome <max %d znakova>: ", BUFFER_LENGTH);
+		scanf(" %s", fileName);
+	}
 
-	printf("\r\n\t********************************************");
-	printf("\r\n\tLista 2.");
-	ReadFromFile(&L2);
-	if (err)return err;
-	printf("\r\n\t\tL2 : ");
-	PrintList(L2.Next);
+	if (strchr(fileName, '.') == NULL)
+		strcat(fileName, ".txt");
 
-	printf("\r\n\t********************************************");
-	err = Presijek(L1.Next, L2.Next, &P);
-	if (err) return err;
-	printf("\r\n\t\tPresijek : ");
-	PrintList(P.Next);
+	error = CalculatePosfix(fileName, &_Stack);
+	if (error) return error;
 
-	printf("\r\n\t********************************************");
-	err = Unija(L1.Next, L2.Next, &U);
-	if (err) return err;
-	printf("\r\n\t\tUnija : ");
-	PrintList(U.Next);
+	error = IsValidStack(&_Stack);
+	if (error)
+		printf("\r\nPOSFIX calculation error!");
+	else
+	{
+		printf("\r\n\tRezultat: %.2f", _Stack.Next->Element);
+	}
 
-	printf("\r\n\t********************************************");
-	printf("\r\n\r\n");
+	GarbageCollector(_Stack.Next);
+	free(fileName);
 
-	return err;
+	printf("\r\n");
+	return error;
+}
+
+int PrintMenu()
+{
+	printf("\t****************************************\r\n");
+	printf("\t***   VJEZBA BR. 07  - Posfix izraz ***\r\n");
+	printf("\t****************************************\r\n");
+	printf("\r\n");
+
+	return SUCCESS;
 }
 
 int CreateNew(Position *head)
@@ -93,182 +102,149 @@ int CreateNew(Position *head)
 	return SUCCESS;
 }
 
-int ReadFromFile(Position P)
+int Push(Position P, float x)
 {
 	int err = SUCCESS;
 	Position q = NULL;
+
+	err = CreateNew(&q);
+	if (err) return err;
+
+	q->Element = x;
+
+	q->Next = P->Next;
+	P->Next = q;
+
+	return err;
+}
+
+int Pop(Position P, float *x)
+{
 	Position tmp = NULL;
-	char *fileName = NULL;
+
+	tmp = P->Next;
+	if (tmp == NULL) return ERROR;
+
+	P->Next = tmp->Next;
+	*x = tmp->Element;
+	free(tmp);
+
+	return SUCCESS;
+}
+
+int Calculator(float x, float y, char *operation, float *result)
+{
+	int error = SUCCESS;
+	if (operation == NULL || strlen(operation) == 0)
+		return ERROR;
+
+	if (strcmp(operation, "+") == 0)
+	{
+		*result = x + y;
+	}
+	else if (strcmp(operation, "-") == 0)
+	{
+		*result = x - y;
+	}
+	else if (strcmp(operation, "*") == 0)
+	{
+		*result = x * y;
+	}
+	else if (strcmp(operation, "/") == 0)
+	{
+		if (y < 0)
+		{
+			*result = 0;
+			printf("\r\n\t\tDivide with zero not allowed!");
+			error = ERROR;
+		}
+		else
+		{
+			*result = x / y;
+		}
+	}
+	else
+	{
+		*result = 0;
+		printf("\r\n\t\tOperation not recognized!");
+		error = ERROR;
+	}
+
+	return error;
+}
+
+int IsOperand(char *buff, float *number)
+{
+	int result = SUCCESS;
+
+	result = sscanf(buff, " %f", number);
+	if (result == EOF || result == 0 || result != 1) return ERROR;
+
+	return SUCCESS;
+}
+
+int CalculatePosfix(char *fileName, Position S)
+{
+	int error = SUCCESS;
+	float number = 0;
+	float operand1 = 0;
+	float operand2 = 0;
+	char *buff = NULL;
 	FILE *fp = NULL;
 
-	fileName = (char*)malloc(sizeof(char) * BUFFER_LENGTH);
-	if (fileName == NULL) return ERROR;
-	memset(fileName, '\0', BUFFER_LENGTH);
-
-	printf("\r\n\tUnesite ime dadoteke za citanje : ");
-	scanf(" %s", fileName);
-
-	if (strchr(fileName, '.') == NULL)
-		strcat(fileName, ".txt");
+	buff = (char*)malloc(sizeof(char) * BUFFER_LENGTH);
+	if (buff == NULL) return ERROR;
+	memset(buff, '\0', BUFFER_LENGTH);
 
 	fp = fopen(fileName, "r");
-	if (fp == NULL)
-	{
-		printf("\r\nGRESKA!\r\n%s datoteka nije otvorena.", fileName);
-		return ERROR;
-	}
+	if (fp == NULL) return ERROR;
 
 	while (!feof(fp))
 	{
-		err = CreateNew(&q);
-		if (err)
+		memset(buff, 0, BUFFER_LENGTH);
+		fscanf(fp, " %s", buff);
+		if (strlen(buff) == 0) continue;
+
+		if (SUCCESS != IsOperand(buff, &number))
 		{
-			printf("\r\nGRESKA!\r\nMemorija nije alocirana.");
-			break;
+			error = Pop(S, &operand2);
+			if (error) break;
+
+			error = Pop(S, &operand1);
+			if (error) break;
+
+			error = Calculator(operand1, operand2, buff, &number);
+			if (error) break;
+
 		}
-
-		fscanf(fp, " %d", &q->koeficijent);
-
-		tmp = P;
-		while (tmp->Next != NULL && tmp->Next->koeficijent >= q->koeficijent)
-			tmp = tmp->Next;
-
-		q->Next = tmp->Next;
-		tmp->Next = q;
+		error = Push(S, number);
+		if (error) break;
 	}
+
 	fclose(fp);
+	
+	if (error)
+		printf("\r\nPOSFIX error!");
 
-	return err;
+	return error;
 }
 
-int PrintMenu()
+int IsValidStack(Position S)
 {
-	printf("\r\n\t********************************************");
-	printf("\r\n\t***   VJEZBA BR. 05  -  Unija i presijek ***");
-	printf("\r\n\t********************************************");
-	printf("\r\n\r\n");
+	if (S == NULL) return ERROR;
+
+	if (S->Next == NULL) return ERROR;
+
+	if (S->Next->Next != NULL) return ERROR;
 
 	return SUCCESS;
 }
 
-int PrintList(Position P)
+int GarbageCollector(Position S)
 {
-	while (P != NULL)
-	{
-		printf(" %d", P->koeficijent);
-		P = P->Next;
-	}
+	if (S == NULL) return SUCCESS;
 
+	GarbageCollector(S->Next);
+	free(S);
 	return SUCCESS;
-}
-
-int Presijek(Position L1, Position L2, Position P)
-{
-	int err = SUCCESS;
-	Position q = NULL;
-
-	while (L1 && L2)
-	{
-		if (L1->koeficijent > L2->koeficijent)
-			L1 = L1->Next;
-		else if (L1->koeficijent < L2->koeficijent)
-			L2 = L2->Next;
-		else
-		{
-			err = CreateNew(&q);
-			if (err)
-			{
-				printf("\r\nGRESKA!\r\nMemorija nije alocirana.");
-				break;
-			}
-
-			q->koeficijent = L1->koeficijent;
-			q->Next = P->Next;
-			P->Next = q;
-			P = q;
-
-			L1 = L1->Next;
-			L2 = L2->Next;
-		}
-	}
-
-	return err;
-}
-
-int Unija(Position L1, Position L2, Position U)
-{
-	int err = SUCCESS;
-	Position q, tmp;
-
-	while (L1 && L2)
-	{
-		err = CreateNew(&q);
-		if (err)
-		{
-			printf("\r\nGRESKA!\r\nMemorija nije alocirana.");
-			break;
-		}
-		else
-		{
-			if (L1->koeficijent > L2->koeficijent)
-			{
-				q->koeficijent = L1->koeficijent;
-				L1 = L1->Next;
-			}
-			else if (L1->koeficijent < L2->koeficijent)
-			{
-				q->koeficijent = L2->koeficijent;
-				L2 = L2->Next;
-			}
-			else
-			{
-				q->koeficijent = L1->koeficijent;
-				L1 = L1->Next;
-				L2 = L2->Next;
-			}
-
-			if (U->koeficijent == q->koeficijent)
-				free(q);
-			else
-			{
-				q->Next = U->Next;
-				U->Next = q;
-				U = q;
-			}
-		}
-	}
-
-	if (err) return err;
-
-	if (L1)
-		tmp = L1;
-	else
-		tmp = L2;
-
-	while (tmp)
-	{
-		err = CreateNew(&q);
-		if (err)
-		{
-			printf("\r\nGRESKA!\r\nMemorija nije alocirana.");
-			break;
-		}
-
-		q->koeficijent = tmp->koeficijent;
-
-		if (U->koeficijent == q->koeficijent)
-		{
-			free(q);
-		}
-		else
-		{
-			q->Next = U->Next;
-			U->Next = q;
-			U = q;
-		}
-
-		tmp = tmp->Next;
-	}
-
-	return err;
 }
