@@ -106,7 +106,7 @@ int main(int argc, char*argv[])
 		printf("Insert root directory name <max %d characters>: ", BUFFER_LENGTH);
 		fgets(buff, BUFFER_LENGTH, stdin);
 
-		if (strlen(buff) != 0)
+    	if (strlen(buff) != 0)
 			break;
 	}
 
