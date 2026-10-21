@@ -8,13 +8,13 @@ typedef struct _student {
 } stud;
 
 int main() {
-    int i, brojac = 0;
+    int i, brojac=0;
     int max_bodova;
-    stud *studenti = NULL;
+    stud *studenti=NULL;
     FILE *fp;
     char bufer[200];
 
-    fp = fopen("popis.txt", "r");
+    fp=fopen("popis.txt", "r");
     if (!fp) {
         printf("Greska pri otvaranju datoteke\n");
         return -1;
@@ -24,17 +24,17 @@ int main() {
         brojac++;
     }
 
-    //alokacija niza struktura //
-    studenti = (stud *)malloc(brojac * sizeof(stud));
-    if (!studenti) {
+    //alokacija niza struktura
+    studenti=(stud *)malloc(brojac * sizeof(stud));
+    if(!studenti) {
         printf("Greska pri alokaciji\n");
         fclose(fp);
         return -1;
     }
 
-    // vracamo se na pocetak datoteke i ucitavamo zapise //
+    //vracamo se na pocetak datoteke i ucitavamo zapise
     rewind(fp);
-    for (i = 0; i < brojac; i++) {
+    for(i = 0; i < brojac; i++) {
         fscanf(fp, "%s %s %d", studenti[i].ime, studenti[i].prezime, &studenti[i].bodovi);
     }
     fclose(fp);
